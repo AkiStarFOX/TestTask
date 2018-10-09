@@ -3,4 +3,8 @@
     <string name="login">Login</string>
     <string name="password">Password</string>
     <string name="title_activity_second">SecondActivity</string>
+    <string name="wrongPassword">Неверная форма записи password</string>
+    <string name="wrongEmail">Неверная форма записи email</string>
+    <string name="AuthError">Ошибка авторизации, проверьте правильность ввода</string>
+    <string name="todo">TODO</string>
 </resources>

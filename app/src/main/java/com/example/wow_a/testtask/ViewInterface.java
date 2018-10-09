@@ -5,4 +5,6 @@ public interface ViewInterface {
     String getPassword();
     void isLoginValid();
     void showValidError();
+    void showProgressBar();
+    void hideProgressBar();
 }

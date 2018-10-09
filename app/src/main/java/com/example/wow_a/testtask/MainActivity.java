@@ -1,6 +1,8 @@
 package com.example.wow_a.testtask;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
@@ -8,17 +10,24 @@ import android.text.TextWatcher;
 import android.text.method.PasswordTransformationMethod;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity implements ViewInterface, TextWatcher, View.OnClickListener {
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+
+public class MainActivity extends AppCompatActivity implements ViewInterface {
     private Button btnLogin;
-    private TextView txtEmail, txtPassword;
+    private EditText txtEmail, txtPassword;
     private boolean isValidEmail, isValidPassword, isShowPass;
     private ImageView btnShowPass;
     public Presenter presenter;
+    private ProgressBar progressBar;
 
     String emailReg = "([a-zA-Z0-9_.-]+)@([a-z0-9_-]+)\\.([a-z]{2,6})";
     String passwordReg = "[a-zA-Z0-9]{6,40}";
@@ -34,78 +43,66 @@ public class MainActivity extends AppCompatActivity implements ViewInterface, Te
         btnLogin.setEnabled(false);
         txtEmail = findViewById(R.id.txtEmail);
         txtPassword = findViewById(R.id.txtPassword);
-        txtEmail.addTextChangedListener(this);
-        txtPassword.addTextChangedListener(this);
+        txtEmail.addTextChangedListener(textWatcher);
+        txtPassword.addTextChangedListener(textWatcher);
         isValidEmail = false;
         isValidPassword = false;
-        btnLogin.setOnClickListener(this);
-        presenter = new Presenter(this);
+        btnLogin.setOnClickListener(clickListener);
+
         btnShowPass = findViewById(R.id.btnShowPass);
-        btnShowPass.setOnClickListener(this);
+        btnShowPass.setOnClickListener(clickListener);
         isShowPass = false;
+        progressBar = findViewById(R.id.pbLogin);
+        progressBar.setVisibility(View.INVISIBLE);
+
+
+        presenter = new Presenter(this);
 
 
     }
 
+    View.OnClickListener clickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            switch (v.getId()) {
+                case R.id.btnLogin:
+                    presenter.checkValid();
 
-    @Override
-    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
-    }
-
-    @Override
-    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
-    }
-
-    @Override
-    public void afterTextChanged(Editable editable) {
-
-
-        if (txtEmail.getText().hashCode() == editable.hashCode()) {
-            if (!editable.toString().trim().matches(emailReg)) {
-
-                txtEmail.setError("Неверная форма записи e-mail");
-                isValidEmail = false;
-            } else {
-                isValidEmail = true;
+                    break;
+                case R.id.btnShowPass:
+                    isShowPass = !isShowPass;
+                    showPass();
+                    break;
             }
+        }
+    };
 
+    TextWatcher textWatcher = new TextWatcher() {
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
-        } else if (txtPassword.getText().hashCode() == editable.hashCode()) {
-            if (!editable.toString().trim().matches(passwordReg)) {
-                txtPassword.setError("Неверная форма записи password");
-                isValidPassword = false;
-            } else {
-                isValidPassword = true;
+        }
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {
+
+            if (txtEmail.getText().hashCode() == s.hashCode()) {
+                isValidEmail = s.toString().trim().matches(emailReg) && s.length() > 6;
+
+            } else if (txtPassword.getText().hashCode() == s.hashCode()) {
+                isValidPassword = s.toString().trim().matches(passwordReg) && s.length() > 5;
+
             }
+            btnLogin.setEnabled(isValidEmail && isValidPassword);
 
         }
+    };
 
-        loginEnable(isValidEmail, isValidPassword);
-    }
-
-    public void loginEnable(boolean mail, boolean password) {
-        if (mail && password) {
-            btnLogin.setEnabled(true);
-        } else {
-            btnLogin.setEnabled(false);
-        }
-    }
-
-
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.btnLogin:
-                presenter.checkValid();
-                break;
-            case R.id.btnShowPass:
-                isShowPass = !isShowPass;
-                showPass();
-                break;
-        }
-    }
 
     public String getEmail() {
         return txtEmail.getText().toString().trim();
@@ -119,23 +116,45 @@ public class MainActivity extends AppCompatActivity implements ViewInterface, Te
     public void isLoginValid() {
         Intent intent = new Intent(MainActivity.this, SecondActivity.class);
         startActivity(intent);
+        finish();
     }
 
     @Override
     public void showValidError() {
-        Toast.makeText(getApplicationContext(), "Ошибка авторизации, проверьте правильность ввода", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getApplicationContext(), R.string.AuthError, Toast.LENGTH_SHORT).show();
 
     }
 
     public void showPass() {
+        int selectionEnd = txtPassword.getSelectionEnd();
+        int selectionStart = txtPassword.getSelectionStart();
         if (isShowPass) {
-
             txtPassword.setTransformationMethod(null);
+            txtPassword.setSelection(selectionStart,selectionEnd);
 
         } else {
             txtPassword.setTransformationMethod(new PasswordTransformationMethod());
+            txtPassword.setSelection(selectionStart,selectionEnd);
 
         }
     }
 
+    public void showProgressBar() {
+        txtEmail.setEnabled(false);
+        txtPassword.setEnabled(false);
+        btnLogin.setEnabled(false);
+        progressBar.setVisibility(View.VISIBLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+    }
+
+    public void hideProgressBar() {
+        txtEmail.setEnabled(true);
+        txtPassword.setEnabled(true);
+        btnLogin.setEnabled(true);
+        progressBar.setVisibility(View.INVISIBLE);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+    }
+
+
 }
+
